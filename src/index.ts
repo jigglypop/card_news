@@ -23,7 +23,7 @@ app.use('/output', express.static(path.join(__dirname, '../data/output')));
 app.use('/static', express.static(path.join(__dirname, '..', 'data', 'output')));
 app.use('/assets', express.static(path.join(__dirname, 'assets')));
 // CORS 헤더 추가
-app.use((req, res, next) => {
+app.use((_, res, next) => {
   res.header('Access-Control-Allow-Origin', '*');
   res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
   next();
@@ -31,7 +31,7 @@ app.use((req, res, next) => {
 // API 라우터 연결
 app.use('/api', apiRouter);
 // 에러 핸들러 미들웨어
-app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+app.use((err: any, _: express.Request, res: express.Response, next: express.NextFunction) => {
   console.error('서버 오류:', err);
   res.status(500).json({
     success: false,
