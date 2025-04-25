@@ -9,7 +9,11 @@
     "build": "tsc",
     "daily": "ts-node src/scripts/daily.ts",
     "monthly": "ts-node src/scripts/monthly.ts",
-    "test:newsapi": "ts-node src/test-newsapi.ts"
+    "test:newsapi": "ts-node src/test-newsapi.ts",
+    "test": "jest",
+    "test:pptService": "jest src/__tests__/services/pptService.test.ts",
+    "generate:ppt": "ts-node src/test-ppt-generation.ts",
+    "generate:html": "ts-node src/test-html-generation.ts"
   },
   "dependencies": {
     "axios": "^1.8.4",
@@ -21,16 +25,22 @@
     "node-cron": "^3.0.3",
     "officegen": "^0.6.5",
     "openai": "^4.44.1",
+    "pdf-lib": "^1.17.1",
     "pdfkit": "^0.17.0",
-    "pptxgenjs": "^3.12.0"
+    "pptxgenjs": "^3.12.0",
+    "puppeteer": "^24.7.2"
   },
   "devDependencies": {
+    "@babel/preset-typescript": "^7.27.0",
     "@types/express": "^4.17.21",
+    "@types/jest": "^29.5.14",
     "@types/morgan": "^1.9.9",
     "@types/node": "^20.10.0",
     "@types/node-cron": "^3.0.11",
     "@types/pdfkit": "^0.13.9",
+    "jest": "^29.7.0",
     "nodemon": "^3.1.10",
+    "ts-jest": "^29.3.2",
     "ts-node": "^10.9.2",
     "typescript": "^5.2.2"
   },

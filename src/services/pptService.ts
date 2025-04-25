@@ -4,7 +4,6 @@ import path from 'path';
 import PDFDocument from 'pdfkit';
 import { PPT_CONSTANTS } from '../config/constants';
 import { tryCatch } from '../utils/errorHandler';
-import { generateHash } from '../utils/fileUtils';
 import { getYesterdayDateString } from '../utils/dateUtils';
 import crypto from 'crypto';
 
@@ -24,6 +23,17 @@ interface CardNewsData {
 export class PPTService {
   private static instance: PPTService;
   private outputPath: string;
+  
+  // 폰트 설정 변경 (다시 BlackHanSans 사용)
+  private PRETENDARD_BOLD = 'Pretendard-Bold';
+  private PRETENDARD_REGULAR = 'Pretendard-Regular';
+  private BLACK_HAN_SANS = 'BlackHanSans';
+  
+  // 색상 설정
+  private COLOR_TITLE = '1D1D1D';
+  private COLOR_TAGS = '5A5A5A';  // 제목보다 연한 색상
+  private COLOR_CONTENT = '1D1D1D';
+  private COLOR_DATE = '1D1D1D';
 
   private constructor() {
     this.outputPath = path.join(process.cwd(), 'data', 'output');
@@ -42,6 +52,33 @@ export class PPTService {
       const cardNewsData = JSON.parse(cardNewsContent) as CardNewsData;
       const pptx = new pptxgen();
 
+      // 이미지 파일 경로 설정 (절대 경로 사용)
+      const techBackgroundPath = path.join(process.cwd(), 'public', 'images', 'backgrounds', 'tech_background.png');
+      const businessBackgroundPath = path.join(process.cwd(), 'public', 'images', 'backgrounds', 'business_background.png');
+      
+      // 이미지 존재 확인 로깅
+      console.log('이미지 경로 정보:');
+      console.log(`- 기술 배경: ${techBackgroundPath}, 존재: ${fs.existsSync(techBackgroundPath)}`);
+      console.log(`- 비즈니스 배경: ${businessBackgroundPath}, 존재: ${fs.existsSync(businessBackgroundPath)}`);
+
+      // 이미지 데이터 로드
+      let techBackgroundData = null;
+      let businessBackgroundData = null;
+      
+      try {
+        if (fs.existsSync(techBackgroundPath)) {
+          const techImageBuffer = fs.readFileSync(techBackgroundPath);
+          techBackgroundData = `data:image/png;base64,${techImageBuffer.toString('base64')}`;
+        }
+        
+        if (fs.existsSync(businessBackgroundPath)) {
+          const businessImageBuffer = fs.readFileSync(businessBackgroundPath);
+          businessBackgroundData = `data:image/png;base64,${businessImageBuffer.toString('base64')}`;
+        }
+      } catch (err) {
+        console.warn('이미지 로딩 중 오류 발생:', err);
+      }
+
       pptx.defineLayout({
         name: 'CARD_NEWS',
         width: PPT_CONSTANTS.SLIDE_WIDTH,
@@ -49,64 +86,158 @@ export class PPTService {
       });
       pptx.layout = 'CARD_NEWS';
 
-      (pptx.theme as any) = {
-        headFontFace: PPT_CONSTANTS.FONT_FAMILY,
-        bodyFontFace: PPT_CONSTANTS.FONT_FAMILY,
-        colorScheme: {
-          accent1: '4472C4',
-          accent2: 'ED7D31',
-          accent3: 'A5A5A5',
-          accent4: 'FFC000',
-          accent5: '5B9BD5',
-          accent6: '70AD47'
-        }
-      };
+      // 폰트 추가 (defineFonts 대신 직접 경로 지정)
+      const blackHanSansPath = path.join(process.cwd(), 'public', 'fonts', 'BlackHanSans-Regular.ttf');
+      const pretendardBoldPath = path.join(process.cwd(), 'public', 'fonts', 'Pretendard-Bold.otf');
+      const pretendardRegularPath = path.join(process.cwd(), 'public', 'fonts', 'Pretendard-Regular.otf');
       
-      pptx.defineSlideMaster({
-        title: 'TECH_SLIDE',
-        background: { 
-          path: 'public/images/backgrounds/tech_background.png' 
-        }
-      });
-      
-      pptx.defineSlideMaster({
-        title: 'BUSINESS_SLIDE',
-        background: { 
-          path: 'public/images/backgrounds/business_background.png' 
-        }
-      });
-      
-      pptx.defineSlideMaster({
-        title: 'TREND_SLIDE',
-        background: { 
-          path: 'public/images/backgrounds/trend_background.png' 
-        }
-      });
-      
-      pptx.defineSlideMaster({
-        title: 'MASTER_SLIDE',
-        background: { color: PPT_CONSTANTS.COLOR_BACKGROUND }
-      });
-      
+      // 로그 출력
+      console.log(`폰트 경로:`);
+      console.log(`- BlackHanSans: ${blackHanSansPath}, 존재: ${fs.existsSync(blackHanSansPath)}`);
+      console.log(`- PretendardBold: ${pretendardBoldPath}, 존재: ${fs.existsSync(pretendardBoldPath)}`);
+      console.log(`- PretendardRegular: ${pretendardRegularPath}, 존재: ${fs.existsSync(pretendardRegularPath)}`);
+
       for (const slide of cardNewsData.slides) {
-        let masterName = 'MASTER_SLIDE';  // 기본 마스터
-        
-        // 태그에 따라 마스터 선택
-        if (slide.tags) {
-          if (slide.tags.some(tag => ['기술', '테크', 'IT', '소프트웨어'].includes(tag))) {
-            masterName = 'TECH_SLIDE';
-          } else if (slide.tags.some(tag => ['비즈니스', '경제', '투자'].includes(tag))) {
-            masterName = 'BUSINESS_SLIDE';
-          } else if (slide.tags.some(tag => ['트렌드', '소식', '최신'].includes(tag))) {
-            masterName = 'TREND_SLIDE';
+        // 슬라이드 타입에 따른 처리
+        if (slide.type === 'cover') {
+          // 커버 슬라이드: 비즈니스 배경 사용
+          const coverSlide = pptx.addSlide();
+          
+          // 비즈니스 배경 적용
+          if (businessBackgroundData) {
+            coverSlide.background = { data: businessBackgroundData };
+          } else {
+            // 배경 이미지가 없는 경우 백업 솔루션으로 직접 이미지 추가
+            if (fs.existsSync(businessBackgroundPath)) {
+              coverSlide.addImage({
+                path: businessBackgroundPath,
+                x: 0, y: 0, w: '100%', h: '100%'
+              });
+            }
           }
-        }
-        
-        const pptSlide = pptx.addSlide({ masterName });
-        switch (slide.type) {
-          case 'cover': this.createCoverSlide(pptSlide, slide); break;
-          case 'news': this.createNewsSlide(pptSlide, slide); break;
-          case 'summary': this.createSummarySlide(pptSlide, slide); break;
+          
+          // 커버 슬라이드에는 날짜만 표시
+          const today = new Date();
+          const dateStr = `${today.getFullYear()}년 ${today.getMonth() + 1}월 ${today.getDate()}일 생성`;
+          coverSlide.addText(dateStr, {
+            x: 0.5, y: 6.5, w: 9, h: 0.5,
+            fontFace: this.PRETENDARD_BOLD,
+            fontSize: 16,
+            color: this.COLOR_DATE,
+            align: 'center'
+          });
+          
+        } else if (slide.type === 'news') {
+          // 뉴스 슬라이드: 기술 배경 사용
+          const newsSlide = pptx.addSlide();
+          
+          // 기술 배경 적용
+          if (techBackgroundData) {
+            newsSlide.background = { data: techBackgroundData };
+          } else {
+            // 배경 이미지가 없는 경우 백업 솔루션으로 직접 이미지 추가
+            if (fs.existsSync(techBackgroundPath)) {
+              newsSlide.addImage({
+                path: techBackgroundPath,
+                x: 0, y: 0, w: '100%', h: '100%'
+              });
+            }
+          }
+          
+          // 제목 추가 (정중앙, 2배 크기로, 밑줄 추가)
+          newsSlide.addText(slide.title, {
+            x: 0.5, y: 1, w: 9, h: 1.5,
+            fontFace: this.BLACK_HAN_SANS,
+            fontSize: 80,  // 폰트 크기 2배로 증가
+            color: this.COLOR_TITLE,
+            align: 'center',
+            underline: { style: 'sng' } // 단일 밑줄 스타일
+          });
+          
+          // 내용 추가 (있는 경우)
+          if (slide.content) {
+            newsSlide.addText(slide.content, {
+              x: 1, y: 2.5, w: 8, h: 3,
+              fontFace: this.BLACK_HAN_SANS,
+              fontSize: 24,
+              color: this.COLOR_CONTENT,
+              align: 'center',
+              valign: 'middle'
+            });
+          }
+          
+          // 태그 추가 (있는 경우)
+          if (slide.tags && slide.tags.length > 0) {
+            const tagsText = '#' + slide.tags.join(' #');
+            newsSlide.addText(tagsText, {
+              x: 0.5, y: 5.5, w: 9, h: 0.7,
+              fontFace: this.BLACK_HAN_SANS,
+              
+              fontSize: 20,
+              color: this.COLOR_TAGS,
+              align: 'center'
+            });
+          }
+          
+          // 출처 추가 (있는 경우, 작게)
+          if (slide.sourceUrl) {
+            newsSlide.addText(`출처: ${slide.sourceUrl}`, {
+              x: 0.5, y: 6.5, w: 9, h: 0.5,
+              fontFace: this.PRETENDARD_REGULAR,
+              fontSize: 12,
+              color: this.COLOR_TAGS,
+              align: 'center'
+            });
+          }
+          
+        } else if (slide.type === 'summary') {
+          // 요약 슬라이드: 기술 배경 사용
+          const summarySlide = pptx.addSlide();
+          
+          // 기술 배경 적용
+          if (techBackgroundData) {
+            summarySlide.background = { data: techBackgroundData };
+          } else {
+            // 배경 이미지가 없는 경우 백업 솔루션으로 직접 이미지 추가
+            if (fs.existsSync(techBackgroundPath)) {
+              summarySlide.addImage({
+                path: techBackgroundPath,
+                x: 0, y: 0, w: '100%', h: '100%'
+              });
+            }
+          }
+          
+          // 제목 추가
+          summarySlide.addText(slide.title, {
+            x: 0.5, y: 0.8, w: 9, h: 1.5,
+            fontFace: this.PRETENDARD_BOLD,
+            fontSize: 40,
+            color: this.COLOR_TITLE,
+            align: 'center'
+          });
+          
+          // 내용 추가 (있는 경우)
+          if (slide.content) {
+            summarySlide.addText(slide.content, {
+              x: 1, y: 2.3, w: 8, h: 3.5,
+              fontFace: this.PRETENDARD_REGULAR,
+              fontSize: 24,
+              color: this.COLOR_CONTENT,
+              align: 'center',
+              valign: 'middle'
+            });
+          }
+          
+          // 생성 날짜 추가 (우측 하단)
+          const today = new Date();
+          const dateStr = `${today.getFullYear()}년 ${today.getMonth() + 1}월 ${today.getDate()}일`;
+          summarySlide.addText(dateStr, {
+            x: 5, y: 6.5, w: 4.5, h: 0.5,
+            fontFace: this.PRETENDARD_BOLD,
+            fontSize: 14,
+            color: this.COLOR_DATE,
+            align: 'right'
+          });
         }
       }
 
@@ -123,6 +254,7 @@ export class PPTService {
       return outputFilePath;
     }, 'PPT 생성 중 오류 발생');
   }
+
   private async createTextSummary(cardNewsData: CardNewsData, outputPath: string): Promise<void> {
     tryCatch(async () => {
       let textContent = "===== IT 카드뉴스 =====\n\n";
@@ -167,9 +299,9 @@ export class PPTService {
       }
       
       return tryCatch(async () => {
-        const fontRegularPath = path.join(process.cwd(), 'public', 'fonts', `${PPT_CONSTANTS.FONT_REGULAR}.otf`);
-        const fontBoldPath = path.join(process.cwd(), 'public', 'fonts', `${PPT_CONSTANTS.FONT_BOLD}.otf`);
-        const fontMediumPath = path.join(process.cwd(), 'public', 'fonts', `${PPT_CONSTANTS.FONT_MEDIUM}.otf`);
+        const fontRegularPath = path.join(process.cwd(), 'public', 'fonts', 'Pretendard-Regular.otf');
+        const fontBoldPath = path.join(process.cwd(), 'public', 'fonts', 'Pretendard-Bold.otf');
+        const fontHanSansPath = path.join(process.cwd(), 'public', 'fonts', 'BlackHanSans-Regular.ttf');
         
         if (!fs.existsSync(fontRegularPath)) {
           throw new Error('필요한 폰트 파일을 찾을 수 없습니다.');
@@ -187,28 +319,28 @@ export class PPTService {
           }
         });
         
-        doc.registerFont(PPT_CONSTANTS.FONT_REGULAR, fontRegularPath);
-        doc.registerFont(PPT_CONSTANTS.FONT_BOLD, fontBoldPath);
-        doc.registerFont(PPT_CONSTANTS.FONT_MEDIUM, fontMediumPath);
+        doc.registerFont('Pretendard-Regular', fontRegularPath);
+        doc.registerFont('Pretendard-Bold', fontBoldPath);
+        doc.registerFont('BlackHanSans', fontHanSansPath);
         
         const stream = fs.createWriteStream(pdfPath);
         doc.pipe(stream);
         
         const textContent = fs.readFileSync(txtPath, 'utf8');
         
-        doc.font(PPT_CONSTANTS.FONT_BOLD).fontSize(24).text('IT 카드뉴스', {
+        doc.font('BlackHanSans').fontSize(28).text('IT 카드뉴스', {
           align: 'center'
         });
         doc.moveDown();
         
         const today = new Date();
-        doc.font(PPT_CONSTANTS.FONT_REGULAR).fontSize(12)
+        doc.font('Pretendard-Regular').fontSize(12)
           .text(`생성일: ${today.getFullYear()}년 ${today.getMonth() + 1}월 ${today.getDate()}일`, {
             align: 'center'
           });
         doc.moveDown(2);
         
-        doc.font(PPT_CONSTANTS.FONT_MEDIUM).fontSize(16).text('카드뉴스 내용', {
+        doc.font('Pretendard-Bold').fontSize(16).text('카드뉴스 내용', {
           align: 'left',
           underline: true
         });
@@ -218,17 +350,17 @@ export class PPTService {
         
         for (const line of lines) {
           if (line.startsWith('[표지]') || line.startsWith('[뉴스]') || line.startsWith('[요약]')) {
-            doc.font(PPT_CONSTANTS.FONT_BOLD).fontSize(14).text(line);
+            doc.font('Pretendard-Bold').fontSize(16).text(line);
           } else if (line.startsWith('#')) {
-            doc.font(PPT_CONSTANTS.FONT_MEDIUM).fontSize(12).fillColor('#1D1D1D').text(line);
+            doc.font('Pretendard-Regular').fontSize(14).fillColor('#5A5A5A').text(line);
             doc.fillColor('#000000');
           } else if (line.startsWith('출처:')) {
-            doc.font(PPT_CONSTANTS.FONT_REGULAR).fontSize(10).fillColor('#666666').text(line);
+            doc.font('Pretendard-Regular').fontSize(10).fillColor('#666666').text(line);
             doc.fillColor('#000000');
           } else if (line.trim() === '') {
             doc.moveDown(0.5);
           } else {
-            doc.font(PPT_CONSTANTS.FONT_REGULAR).fontSize(12).text(line);
+            doc.font('Pretendard-Regular').fontSize(14).text(line);
           }
         }
         
@@ -242,90 +374,5 @@ export class PPTService {
         return pdfPath;
       }, 'PDF 생성 중 오류 발생', pptxPath);
     }, 'PDF 변환 중 오류 발생', pptxPath);
-  }
-
-  private createCoverSlide(slide: any, data: Slide): void {
-    slide.addText(data.title, {
-      x: 0.5, y: 1.5, w: 9, h: 1.5,
-      fontSize: 44, fontFace: PPT_CONSTANTS.FONT_FAMILY,
-      bold: true, color: PPT_CONSTANTS.COLOR_TITLE, align: 'center'
-    });
-
-    if (data.subtitle) {
-      slide.addText(data.subtitle, {
-        x: 1, y: 3.2, w: 8, h: 0.8,
-        fontSize: 28, fontFace: PPT_CONSTANTS.FONT_FAMILY,
-        color: PPT_CONSTANTS.COLOR_SUBTITLE, align: 'center'
-      });
-    }
-
-    const today = new Date();
-    const dateStr = `${today.getFullYear()}년 ${today.getMonth() + 1}월 ${today.getDate()}일`;
-    slide.addText(dateStr, {
-      x: 0.5, y: 6, w: 9, h: 0.5,
-      fontSize: 16, fontFace: PPT_CONSTANTS.FONT_FAMILY,
-      color: PPT_CONSTANTS.COLOR_DATE, align: 'center'
-    });
-  }
-
-  private createNewsSlide(slide: any, data: Slide): void {
-    slide.addText(data.title, {
-      x: 0.5, y: 0.5, w: 9, h: 0.8,
-      fontSize: 32, fontFace: PPT_CONSTANTS.FONT_FAMILY,
-      bold: true, color: PPT_CONSTANTS.COLOR_TITLE,
-      align: 'center'
-    });
-
-    if (data.content) {
-      slide.addText(data.content, {
-        x: 0.5, y: 1.8, w: 9, h: 2.5,
-        fontSize: 24, fontFace: PPT_CONSTANTS.FONT_FAMILY,
-        color: PPT_CONSTANTS.COLOR_TEXT, align: 'center',
-        valign: 'middle'
-      });
-    }
-
-    if (data.tags && data.tags.length > 0) {
-      const tagsText = '#' + data.tags.join(' #');
-      slide.addText(tagsText, {
-        x: 0.5, y: 4.5, w: 9, h: 0.5,
-        fontSize: 16, fontFace: PPT_CONSTANTS.FONT_FAMILY,
-        color: PPT_CONSTANTS.COLOR_TAGS, align: 'center'
-      });
-    }
-
-    if (data.sourceUrl) {
-      slide.addText(`출처: ${data.sourceUrl}`, {
-        x: 0.5, y: 6.5, w: 9, h: 0.3,
-        fontSize: 10, fontFace: PPT_CONSTANTS.FONT_FAMILY,
-        color: PPT_CONSTANTS.COLOR_SOURCE, align: 'center'
-      });
-    }
-  }
-
-  private createSummarySlide(slide: any, data: Slide): void {
-    slide.addText(data.title, {
-      x: 0.5, y: 0.5, w: 9, h: 0.8,
-      fontSize: 36, fontFace: PPT_CONSTANTS.FONT_FAMILY,
-      bold: true, color: PPT_CONSTANTS.COLOR_TITLE,
-      align: 'center'
-    });
-
-    if (data.content) {
-      slide.addText(data.content, {
-        x: 0.5, y: 2, w: 9, h: 4,
-        fontSize: 24, fontFace: PPT_CONSTANTS.FONT_FAMILY,
-        color: PPT_CONSTANTS.COLOR_TEXT, align: 'center',
-        valign: 'middle'
-      });
-    }
-
-    const today = new Date();
-    const dateStr = `${today.getFullYear()}년 ${today.getMonth() + 1}월 ${today.getDate()}일`;
-    slide.addText(dateStr, {
-      x: 0.5, y: 6.5, w: 9, h: 0.3,
-      fontSize: 12, fontFace: PPT_CONSTANTS.FONT_FAMILY,
-      color: PPT_CONSTANTS.COLOR_DATE, align: 'center'
-    });
   }
 } 

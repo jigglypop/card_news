@@ -73,7 +73,6 @@ const findAvailablePort = (startPort: number, maxPort: number = startPort + 100)
           reject(err);
         }
       });
-
       server.once('listening', () => {
         server.close(() => {
           console.log(`사용 가능한 포트를 찾았습니다: ${port}`);
@@ -93,7 +92,7 @@ const startServer = async () => {
     // 사용 가능한 포트 찾기
     const port = await findAvailablePort(preferredPort);
     app.listen(port, () => {
-      console.log(`서버가 포트 ${port}에서 실행 중입니다`);
+      console.log(`http://localhost:${port} 에서 실행 중`);
     });
   } catch (error) {
     console.error('서버 시작 실패:', error);
