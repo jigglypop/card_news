@@ -39,22 +39,17 @@ app.use((err: any, _: express.Request, res: express.Response, next: express.Next
     error: process.env.NODE_ENV === 'development' ? err.message : undefined
   });
 });
-
 // 출력 디렉토리가 없는 경우 생성
 const outputDir = path.join(__dirname, '../data/output');
 if (!fs.existsSync(outputDir)) {
   fs.mkdirSync(outputDir, { recursive: true });
 }
 // 라우트 설정
-app.get('/', (req, res) => {
+app.get('/', (_, res) => {
   res.sendFile(path.join(__dirname, '../public/index.html'));
 });
-app.get('/health', (req, res) => {
-  res.status(200).json({ status: 'ok' });
-});
-
 // 404 처리
-app.use((req, res) => {
+app.use((_, res) => {
   res.status(404).json({
     success: false,
     message: '요청한 리소스를 찾을 수 없습니다.'

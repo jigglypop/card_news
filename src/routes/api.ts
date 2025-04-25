@@ -120,15 +120,10 @@ router.post('/run-monthly', async (req, res) => {
 router.get('/task-status', (req, res) => {
   tryCatch(async () => {
     const lastGeneratedFile = schedulerService.getLastGeneratedFile();
-    
-    // 파일 목록 조회 (디렉토리 없으면 생성)
     if (!fs.existsSync(outputDir)) {
       fs.mkdirSync(outputDir, { recursive: true });
     }
-    
     const files = fs.readdirSync(outputDir);
-    
-    // 최근 생성 파일 확인
     const recentFiles = files
       .filter(file => file.endsWith('.pptx') || file.endsWith('.pdf'))
       .map(file => {

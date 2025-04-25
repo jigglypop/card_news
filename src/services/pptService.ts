@@ -63,12 +63,46 @@ export class PPTService {
       };
       
       pptx.defineSlideMaster({
+        title: 'TECH_SLIDE',
+        background: { 
+          path: 'public/images/backgrounds/tech_background.png' 
+        }
+      });
+      
+      pptx.defineSlideMaster({
+        title: 'BUSINESS_SLIDE',
+        background: { 
+          path: 'public/images/backgrounds/business_background.png' 
+        }
+      });
+      
+      pptx.defineSlideMaster({
+        title: 'TREND_SLIDE',
+        background: { 
+          path: 'public/images/backgrounds/trend_background.png' 
+        }
+      });
+      
+      pptx.defineSlideMaster({
         title: 'MASTER_SLIDE',
         background: { color: PPT_CONSTANTS.COLOR_BACKGROUND }
       });
       
       for (const slide of cardNewsData.slides) {
-        const pptSlide = pptx.addSlide({ masterName: 'MASTER_SLIDE' });
+        let masterName = 'MASTER_SLIDE';  // 기본 마스터
+        
+        // 태그에 따라 마스터 선택
+        if (slide.tags) {
+          if (slide.tags.some(tag => ['기술', '테크', 'IT', '소프트웨어'].includes(tag))) {
+            masterName = 'TECH_SLIDE';
+          } else if (slide.tags.some(tag => ['비즈니스', '경제', '투자'].includes(tag))) {
+            masterName = 'BUSINESS_SLIDE';
+          } else if (slide.tags.some(tag => ['트렌드', '소식', '최신'].includes(tag))) {
+            masterName = 'TREND_SLIDE';
+          }
+        }
+        
+        const pptSlide = pptx.addSlide({ masterName });
         switch (slide.type) {
           case 'cover': this.createCoverSlide(pptSlide, slide); break;
           case 'news': this.createNewsSlide(pptSlide, slide); break;
@@ -133,9 +167,9 @@ export class PPTService {
       }
       
       return tryCatch(async () => {
-        const fontRegularPath = path.join(process.cwd(), 'src', 'assets', 'fonts', `${PPT_CONSTANTS.FONT_REGULAR}.otf`);
-        const fontBoldPath = path.join(process.cwd(), 'src', 'assets', 'fonts', `${PPT_CONSTANTS.FONT_BOLD}.otf`);
-        const fontMediumPath = path.join(process.cwd(), 'src', 'assets', 'fonts', `${PPT_CONSTANTS.FONT_MEDIUM}.otf`);
+        const fontRegularPath = path.join(process.cwd(), 'public', 'fonts', `${PPT_CONSTANTS.FONT_REGULAR}.otf`);
+        const fontBoldPath = path.join(process.cwd(), 'public', 'fonts', `${PPT_CONSTANTS.FONT_BOLD}.otf`);
+        const fontMediumPath = path.join(process.cwd(), 'public', 'fonts', `${PPT_CONSTANTS.FONT_MEDIUM}.otf`);
         
         if (!fs.existsSync(fontRegularPath)) {
           throw new Error('필요한 폰트 파일을 찾을 수 없습니다.');
@@ -186,7 +220,7 @@ export class PPTService {
           if (line.startsWith('[표지]') || line.startsWith('[뉴스]') || line.startsWith('[요약]')) {
             doc.font(PPT_CONSTANTS.FONT_BOLD).fontSize(14).text(line);
           } else if (line.startsWith('#')) {
-            doc.font(PPT_CONSTANTS.FONT_MEDIUM).fontSize(12).fillColor('#3498db').text(line);
+            doc.font(PPT_CONSTANTS.FONT_MEDIUM).fontSize(12).fillColor('#1D1D1D').text(line);
             doc.fillColor('#000000');
           } else if (line.startsWith('출처:')) {
             doc.font(PPT_CONSTANTS.FONT_REGULAR).fontSize(10).fillColor('#666666').text(line);
