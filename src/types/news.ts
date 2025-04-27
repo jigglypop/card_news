@@ -12,7 +12,7 @@ export interface AnalyzedNews {
   title: string;
   content: string;
   summary: string;
-  importance: number; 
+  importance: number;
   category: string;
   tags: string[];
   source: string;
@@ -25,8 +25,7 @@ export interface CardNewsSlide {
   imagePrompt?: string;
   sourceUrl?: string;
   tags?: string[];
-} 
-
+}
 
 export interface NewsSource {
   type: string;
