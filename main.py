@@ -85,7 +85,7 @@ CATEGORIZED_DATA = [
     ]
   },
   {
-    "category_name": "🎤 열정과 참여",
+    "category_name": "열정과 참여",
     "communities": [
       { "name": "사회이슈토론", "description": "요즘 뜨거운 사회 이슈에 대해 진지하게 토론해보는 시그입니다." },
       { "name": "블랙팝콘", "description": "노래하는 걸 좋아하는 보컬 아티스트들이 모여 음악 활동도 하고 공모전도 나가요." },
@@ -111,6 +111,13 @@ def create_html_content(categorized_data):
     # 캐릭터 이미지들을 base64로 인코딩
     character1_base64 = encode_image_to_base64("image/character/1.png")
     character2_base64 = encode_image_to_base64("image/character/2.png")
+    character3_base64 = encode_image_to_base64("image/character/3.png")
+    character4_base64 = encode_image_to_base64("image/character/4.png")
+    character5_base64 = encode_image_to_base64("image/character/5.png")
+    character6_base64 = encode_image_to_base64("image/character/6.png")
+    characters = [character2_base64, character3_base64, character4_base64, character5_base64, character6_base64]
+    # 말풍선에 들어갈 프로필 이미지 (첫 번째 커뮤니티)
+    bubble_profile_base64 = get_profile_image_base64("올콤보")
     
     # Cover Page
     html_pages += f"""
@@ -131,7 +138,7 @@ def create_html_content(categorized_data):
                     </div>
                     <div class="lightbulb">💡</div>
                     <div class="star star1">⭐</div>
-                    <div class="star star2">✨</div>
+                    <div class="star star2">⭐</div>
                     <div class="star star3">⭐</div>
                 </div>
             </div>
@@ -139,13 +146,13 @@ def create_html_content(categorized_data):
     </div>
     """
     # Category (Q&A) Pages
-    for category in categorized_data:
+    for page_index, category in enumerate(categorized_data):
         category_name = category['category_name']
         qa_html = ""
-        # 한 페이지에 최대 3개의 Q&A를 표시
         for community in category['communities'][:DISPLAY_CONFIG["max_communities_per_page"]]:
             question = community['name']
             answer = community['description']
+            profile_image_base64 = get_profile_image_base64(question)
             qa_html += f"""
             <div class="qa-item">
                 <div class="question-box">
@@ -154,24 +161,33 @@ def create_html_content(categorized_data):
                 </div>
                 <div class="answer-box">
                     <span class="a-label">A.</span>
-                    <div class="answer-text">{answer}</div>
+                    <div class="answer-bubble">
+                        {f'<img src="data:image/jpeg;base64,{profile_image_base64}" class="answer-profile" alt="{question} 프로필" />' if profile_image_base64 else ''}
+                        <div class="answer-text">{answer}</div>
+                    </div>
                 </div>
             </div>
             """
+        
+        # 캐릭터 선택 (2~6번 중에서)
+        character_base64 = characters[page_index] if page_index < len(characters) else None
         
         html_pages += f"""
         <div class="page news-page">
             <div class="card-container">
                 <h2 class="category-title">{category_name}</h2>
                 {qa_html}
+                {f'<img src="data:image/png;base64,{character_base64}" class="page-character" alt="캐릭터" />' if character_base64 else ''}
             </div>
         </div>
         """
+    # Thank You Page
+    all_characters_base64 = encode_image_to_base64("image/character/all.png")
     html_pages += f"""
     <div class="page thank-you">
          <div class="card-container">
             <p class="message">{TEXT_CONFIG["thank_you_message"]}</p>
-            <p class="date">{datetime.now().strftime(DISPLAY_CONFIG['date_format'])}</p>
+            {f'<img src="data:image/png;base64,{all_characters_base64}" class="all-characters" alt="모든 캐릭터" />' if all_characters_base64 else ''}
         </div>
     </div>
     """
@@ -194,6 +210,15 @@ def encode_image_to_base64(image_path):
     except FileNotFoundError:
         print(f"이미지 파일을 찾을 수 없습니다: {image_path}")
         return None
+
+def get_profile_image_base64(community_name):
+    """커뮤니티 이름에 맞는 프로필 이미지를 base64로 반환합니다."""
+    profile_path = f"image/profile/{community_name}.jpg"
+    profile_base64 = encode_image_to_base64(profile_path)
+    if profile_base64:
+        return profile_base64
+    else:
+        return encode_image_to_base64("image/character/1.png")
 
 def generate_embedded_font_css():
     """폰트를 base64로 임베드한 CSS를 생성합니다."""
@@ -256,8 +281,12 @@ async def generate_pdf_and_png_from_html(html_content, css_content):
     </html>
     """
 
+    # 현재 시간을 이용한 파일명 생성
+    timestamp = datetime.now().strftime("%Y%m%d%H%M")
+    pdf_filename = f"sig_card_{timestamp}.pdf"
+    
     html_output_path = os.path.join(PATH_CONFIG["output_dir"], OUTPUT_CONFIG["html_file"])
-    pdf_output_path = os.path.join(PATH_CONFIG["output_dir"], OUTPUT_CONFIG["pdf_file"])
+    pdf_output_path = os.path.join(PATH_CONFIG["output_dir"], pdf_filename)
     with open(html_output_path, "w", encoding="utf-8") as f:
         f.write(final_html)
     print(f"'{html_output_path}' 파일 생성 완료")
