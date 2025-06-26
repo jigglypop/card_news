@@ -15,7 +15,6 @@ function checkRequiredEnvVars() {
   const missingVars = [];
   if (!process.env.NEWS_API_KEY) missingVars.push('NEWS_API_KEY');
   if (!process.env.OPENAI_API_KEY) missingVars.push('OPENAI_API_KEY');
-  
   return {
     isValid: missingVars.length === 0,
     missingVars
@@ -32,9 +31,7 @@ router.get('/card-news', (_, res) => {
       Logger.info(`출력 디렉토리 생성: ${outputDir}`);
       return res.json([]);
     }
-
     const files = fs.readdirSync(outputDir);
-
     const cardNews = files
       .filter(file => file.endsWith('.pptx') || file.endsWith('.pdf'))
       .map(file => {
